@@ -1,7 +1,8 @@
 use axum::{Router, routing::get};
-use sqlx::postgres::PgPoolOptions;
+use sqlx::postgres::{PgConnectOptions, PgPoolOptions, PgSslMode};
 use tower_http::cors::CorsLayer;
 use tracing_subscriber::EnvFilter;
+use std::str::FromStr;
 
 mod api;
 
@@ -16,11 +17,16 @@ async fn main() {
         .init();
 
     // DB接続プールの作成
-    let database_url = std::env::var("DATABASE_URL")
-        .expect("DATABASE_URL must be set");
+    let connect_options = PgConnectOptions::new()
+        .host("127.0.0.1")
+        .port(5433)
+        .database("knowledge_graph")
+        .username("app")
+        .password(&std::env::var("DB_PASSWORD").expect("DB_PASSWORD must be set"))
+        .ssl_mode(PgSslMode::Disable);
     let pool = PgPoolOptions::new()
         .max_connections(10)
-        .connect(&database_url)
+        .connect_with(connect_options)
         .await
         .expect("Failed to connect to database");
 
