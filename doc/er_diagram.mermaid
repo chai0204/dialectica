@@ -1,0 +1,335 @@
+erDiagram
+    %% ============================================================
+    %% 人類の総合知グラフ — 統合ER図（最終版）
+    %% ============================================================
+
+    %% ===== Core Layer =====
+
+    users {
+        uuid id PK
+        varchar username UK
+        varchar display_name
+        varchar user_type "human|ai_seed|ai_dialectic|ai_bridge|ai_perspective"
+        timestamp created_at
+    }
+
+    propositions {
+        uuid id PK
+        text content "命題の自然言語表現"
+        enum type "fact_claim|value_judgment|definition|hypothesis|question|meta"
+        uuid parent_id FK "再帰構造(n-category)"
+        uuid frame_id FK "フレーム意味論"
+        uuid created_by FK
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    relations {
+        uuid id PK
+        enum type "support|refutation|equivalence|context_restriction|analogy|causation|correlation|composition|specialization|contradiction"
+        text description
+        uuid created_by FK
+        timestamp created_at
+    }
+
+    relation_members {
+        uuid id PK
+        uuid relation_id FK
+        uuid proposition_id FK
+        enum role "premise|conclusion|subject|object|context|qualifier"
+        int position
+    }
+
+    %% ===== Interpretation & Rebuttal Layer =====
+
+    interpretations {
+        uuid id PK
+        enum target_type "proposition|relation"
+        uuid target_id
+        uuid author_id FK
+        enum stance "agree|disagree|uncertain|conditional|reinterpret"
+        decimal confidence "0.00-1.00"
+        text reasoning
+        jsonb conditions
+        enum inference_type "deductive|inductive|abductive|analogical|statistical|causal|normative|definitional"
+        jsonb structured_reasoning
+        timestamp created_at
+    }
+
+    interpretation_premises {
+        uuid id PK
+        uuid interpretation_id FK
+        uuid proposition_id FK
+        varchar role "supporting_evidence|necessary_assumption|contextual_condition|counter_to_alternative"
+        decimal weight "0-1"
+    }
+
+    interpretation_rebuttals {
+        uuid id PK
+        uuid target_interpretation_id FK
+        uuid rebuttal_interpretation_id FK
+        varchar rebuttal_type "premise_attack|inference_attack|undercutting|counter_example|alternative_explanation"
+        uuid attacked_premise_id FK
+        varchar status "active|addressed|withdrawn|superseded"
+        timestamp created_at
+    }
+
+    %% ===== Semantic Frame Layer =====
+
+    frames {
+        uuid id PK
+        varchar name "e.g. Commercial_transaction"
+        text description
+        uuid created_by FK
+        timestamp created_at
+    }
+
+    frame_roles {
+        uuid id PK
+        uuid frame_id FK
+        varchar role_name "e.g. buyer, seller"
+        text description
+        boolean is_required
+    }
+
+    frame_bindings {
+        uuid id PK
+        uuid proposition_id FK
+        uuid frame_role_id FK
+        text bound_value
+    }
+
+    %% ===== Context Layer =====
+
+    contexts {
+        uuid id PK
+        varchar name
+        text description
+        uuid parent_id FK "階層構造"
+        timestamp created_at
+    }
+
+    proposition_contexts {
+        uuid proposition_id FK
+        uuid context_id FK
+    }
+
+    %% ===== Equivalence Layer (Frege) =====
+
+    equivalence_groups {
+        uuid id PK
+        uuid canonical_id FK "代表命題"
+        text rationale
+        timestamp created_at
+    }
+
+    equivalence_members {
+        uuid id PK
+        uuid group_id FK
+        uuid proposition_id FK
+        decimal similarity
+        uuid proposed_by FK
+        enum status "proposed|approved|rejected"
+    }
+
+    %% ===== Embedding & Clustering Layer =====
+
+    interpretation_embeddings {
+        uuid interpretation_id PK
+        vector embedding "768dim"
+        varchar model_name
+        timestamp created_at
+    }
+
+    proposition_embeddings {
+        uuid proposition_id PK
+        vector embedding "768dim"
+        varchar model_name
+        timestamp created_at
+    }
+
+    interpretation_clusters {
+        uuid id PK
+        uuid proposition_id FK
+        uuid centroid_interp_id FK
+        text summary
+        varchar dominant_stance
+        decimal stance_agreement
+        int member_count
+        decimal cohesion
+        timestamp updated_at
+    }
+
+    interpretation_cluster_members {
+        uuid cluster_id FK
+        uuid interpretation_id FK
+        decimal distance_to_centroid
+    }
+
+    %% ===== Perspective & Tag Layer =====
+
+    perspectives {
+        uuid id PK
+        varchar name
+        text description
+        uuid parent_id FK "階層構造"
+        timestamp created_at
+    }
+
+    interpretation_perspectives {
+        uuid interpretation_id FK
+        uuid perspective_id FK
+        varchar depth "primary|considered|acknowledged"
+    }
+
+    interpretation_blind_spots {
+        uuid interpretation_id FK
+        uuid perspective_id FK
+        text reason
+    }
+
+    interpretation_tags {
+        uuid interpretation_id FK
+        varchar tag_name
+        text tag_value
+        uuid tagged_by FK
+        timestamp created_at
+    }
+
+    %% ===== Cache & Parameters Layer =====
+
+    plausibility_cache {
+        uuid proposition_id PK
+        decimal local_score "-1.0 to 1.0"
+        decimal propagated_score "-1.0 to 1.0"
+        decimal fragility_score "0.0 to 1.0"
+        int interpretation_count
+        timestamp last_computed
+        decimal previous_propagated
+        decimal delta "GENERATED"
+    }
+
+    relation_confidence_cache {
+        uuid relation_id PK
+        decimal confidence
+        timestamp last_computed
+    }
+
+    system_parameters {
+        varchar key PK
+        decimal value
+        text description
+        timestamp updated_at
+    }
+
+    %% ===== AI Suggestion Layer (isolated) =====
+
+    ai_suggestions {
+        uuid id PK
+        varchar target_type "raw_input|interpretation|proposition|rebuttal_opportunity"
+        uuid target_id
+        jsonb suggestion_content
+        varchar model_name
+        varchar response_status "pending|adopted|modified|dismissed|expired"
+        uuid_arr adopted_entity_ids
+        uuid user_id FK
+        timestamp created_at
+        timestamp expires_at
+    }
+
+    ai_generation_metadata {
+        uuid id PK
+        varchar target_type
+        uuid target_id
+        varchar model_name
+        varchar workflow_name
+        jsonb input_context
+        varchar review_status "pending|approved|modified|rejected"
+        uuid reviewed_by FK
+        timestamp created_at
+    }
+
+    %% ===== Audit Layer =====
+
+    revision_history {
+        uuid id PK
+        varchar target_type
+        uuid target_id
+        jsonb previous_state
+        jsonb new_state
+        uuid changed_by FK
+        text change_reason
+        timestamp changed_at
+    }
+
+    cascade_events {
+        uuid id PK
+        uuid trigger_proposition FK
+        decimal trigger_delta
+        timestamp started_at
+        timestamp completed_at
+        int total_affected
+    }
+
+    cascade_impacts {
+        uuid id PK
+        uuid cascade_event_id FK
+        uuid proposition_id FK
+        decimal old_score
+        decimal new_score
+        decimal delta
+        int depth
+        uuid_arr path
+    }
+
+    proposition_closure {
+        uuid ancestor_id FK
+        uuid descendant_id FK
+        int depth
+    }
+
+    %% ===== Relationships =====
+
+    users ||--o{ propositions : creates
+    users ||--o{ relations : creates
+    users ||--o{ interpretations : authors
+    users ||--o{ frames : creates
+    users ||--o{ ai_suggestions : receives
+
+    propositions ||--o{ propositions : "parent_id"
+    propositions ||--o{ relation_members : participates
+    propositions ||--o{ interpretations : "target"
+    propositions ||--o{ frame_bindings : binds
+    propositions ||--o{ proposition_contexts : scoped_by
+    propositions ||--o{ equivalence_members : member_of
+    propositions ||--o{ interpretation_premises : cited_as_premise
+
+    relations ||--o{ relation_members : has_members
+    relations ||--o{ interpretations : "target"
+
+    interpretations ||--o{ interpretation_premises : has_premises
+    interpretations ||--o{ interpretation_rebuttals : "target or rebuttal"
+    interpretations ||--o{ interpretation_embeddings : embedded
+    interpretations ||--o{ interpretation_cluster_members : clustered
+    interpretations ||--o{ interpretation_perspectives : has_perspective
+    interpretations ||--o{ interpretation_blind_spots : has_blind_spot
+    interpretations ||--o{ interpretation_tags : tagged
+
+    interpretation_clusters ||--o{ interpretation_cluster_members : contains
+    interpretation_clusters }o--|| propositions : "for_proposition"
+
+    frames ||--o{ frame_roles : defines
+    frames ||--o{ propositions : grounds
+    frame_roles ||--o{ frame_bindings : bound_to
+
+    contexts ||--o{ contexts : "parent"
+    contexts ||--o{ proposition_contexts : applies_to
+
+    perspectives ||--o{ perspectives : "parent"
+    perspectives ||--o{ interpretation_perspectives : applied_to
+    perspectives ||--o{ interpretation_blind_spots : missing_from
+
+    equivalence_groups ||--o{ equivalence_members : contains
+    equivalence_groups ||--|| propositions : canonical
+
+    cascade_events ||--o{ cascade_impacts : records

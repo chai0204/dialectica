@@ -1,0 +1,8 @@
+# 開発時のみの追加設定
+# 使用: docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+services:
+  db:
+    ports:
+      - "5432:5432"
+    # ログレベルを上げる（開発時のみ）
+    command: postgres -c log_statement=all -c log_min_duration_statement=100

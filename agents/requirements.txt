@@ -1,0 +1,8 @@
+# AI Agent Dependencies
+httpx>=0.28.0                 # HTTP client（バッチAPI呼び出し用）
+google-generativeai>=0.8.0    # Gemini API
+pydantic>=2.10.0              # データバリデーション
+
+# Utilities
+python-dotenv>=1.0.0          # .env読み込み
+tenacity>=9.0.0               # リトライ処理

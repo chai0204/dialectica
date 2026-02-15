@@ -1,0 +1,30 @@
+# Rust
+backend/target/
+**/*.rs.bk
+
+# Node.js
+frontend/node_modules/
+frontend/dist/
+
+# Python
+agents/__pycache__/
+agents/.venv/
+*.pyc
+
+# Environment
+.env
+
+# IDE
+.vscode/settings.json
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+pgdata/
+
+# SQLx
+# sqlx-data.json は含める（オフラインビルド用）
+# .sqlx/ ディレクトリも含める

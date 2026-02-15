@@ -1,0 +1,92 @@
+graph TB
+    subgraph PARTICIPANTS["■ 参加者（不完全な観測者たち）"]
+        direction LR
+        subgraph HUMAN["人間"]
+            H1["参加者A<br/>専門: 経済学"]
+            H2["参加者B<br/>感情的だが直感鋭い"]
+            H3["参加者C<br/>丁寧な論証者"]
+        end
+        subgraph AI_PART["AI参加者（同一ルール）"]
+            A1["🤖 Seed Agent<br/>既存知識を投稿"]
+            A2["🤖 Dialectic Agent<br/>反駁を投稿"]
+            A3["🤖 Perspective Agent<br/>別視点で投稿"]
+            A4["🤖 Bridge Agent<br/>ドメイン間接続"]
+        end
+    end
+
+    subgraph SUGGEST["■ AI提案レイヤー（グラフに影響しない）"]
+        SUG["ai_suggestions<br/>・構造化提案<br/>・前提提案<br/>・類似命題提案<br/>・反駁機会提案<br/><br/>★ 採用されなければ無<br/>★ テーブルごと削除してもグラフ不変"]
+    end
+
+    subgraph PLATFORM["■ プラットフォーム（決定論的な競技場）"]
+
+        subgraph DATA["データ層 (PostgreSQL + pgvector)"]
+            CORE["命題 | 関係 | 関係メンバー"]
+            INTERP["解釈 | 解釈前提 | 反駁"]
+            SEMANTIC["フレーム | 文脈 | 等価グループ"]
+            VECTOR["埋め込みベクトル | クラスタ"]
+            META["視野 | タグ | 変更履歴"]
+        end
+
+        subgraph CALC["計算層（全パラメータ公開）"]
+            direction TB
+            L1["Layer 1: 構造的健全性<br/>= f(前提のもっともらしさ)<br/>weight: 0.60"]
+            L2["Layer 2: 反駁耐性<br/>= f(反駁の数と質)<br/>weight: 0.40"]
+            RELIABILITY["解釈の信頼度<br/>= L1×0.60 + L2×0.40"]
+            CLUSTER_CALC["クラスタベース集計<br/>対数圧縮(数の暴力抑制)"]
+            PLAUS["命題のもっともらしさ<br/>= Σ(信頼度 × ln(支持数) × stance)"]
+            PROPAGATION["伝播計算<br/>local × 0.4 + cascade × 0.6"]
+            CASCADE["覆り波及<br/>BFS + 減衰(0.85)"]
+            FRAGILITY["前提脆弱性マップ<br/>= 分散 × 条件付き率 × 少数ペナルティ"]
+            HIDDEN["Hidden Vulnerability<br/>高受容度 × 高脆弱性 × 高依存数"]
+        end
+
+        PARAMS["⚙️ system_parameters<br/>全パラメータ公開・検証可能"]
+    end
+
+    subgraph EMERGENT["■ 創発する集合知"]
+        E1["多面的な量子状態としての命題"]
+        E2["覆り波及による自動整合性維持"]
+        E3["脆弱性マップによる議論の焦点化"]
+        E4["不完全な観測の集積 → 堅固なコンセンサス"]
+    end
+
+    %% 参加者 → データ層
+    H1 & H2 & H3 -->|"解釈・反駁を投稿"| INTERP
+    A1 -->|"命題+前提を投稿"| CORE
+    A2 -->|"反駁を投稿"| INTERP
+    A3 -->|"別視点の解釈を投稿"| INTERP
+    A4 -->|"ドメイン間関係を投稿"| CORE
+
+    %% AI提案（隔離）
+    SUG -.->|"参加者が採用時のみ"| DATA
+    PARTICIPANTS -.->|"提案を受け取る"| SUGGEST
+
+    %% 計算層の内部フロー
+    CORE & INTERP --> L1
+    INTERP --> L2
+    L1 --> RELIABILITY
+    L2 --> RELIABILITY
+    VECTOR --> CLUSTER_CALC
+    RELIABILITY --> CLUSTER_CALC
+    CLUSTER_CALC --> PLAUS
+    PLAUS --> PROPAGATION
+    PROPAGATION --> CASCADE
+    PLAUS --> FRAGILITY
+    FRAGILITY --> HIDDEN
+    PARAMS -.->|"パラメータ参照"| CALC
+
+    %% 計算結果 → 創発
+    CASCADE --> E2
+    FRAGILITY --> E3
+    HIDDEN --> E3
+    PLAUS --> E1
+    CLUSTER_CALC --> E4
+
+    %% スタイリング
+    style PLATFORM fill:#e3f2fd,stroke:#1565c0,stroke-width:3px
+    style SUGGEST fill:#fff8e1,stroke:#f57f17,stroke-width:2px,stroke-dasharray:5 5
+    style PARTICIPANTS fill:#fce4ec,stroke:#c62828,stroke-width:2px
+    style EMERGENT fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+    style PARAMS fill:#bbdefb,color:#000
+    style SUG fill:#fff3e0,color:#000
