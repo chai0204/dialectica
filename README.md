@@ -18,7 +18,7 @@
 # DBコンテナの起動（初回はビルドが走ります）
 docker compose up -d
 
-# バックエンドの起動（ポート 3001）
+# バックエンドの起動（ポート 4000）
 cd backend
 cargo run
 
@@ -32,14 +32,14 @@ npm run dev
 `.env.example` をコピーして `.env` を作成してください。
 デフォルトでは以下のポートを使用します：
 
-- Backend: 3001
+- Backend: 4000
 - Database: 5433 (ホスト側), 5432 (コンテナ内)
 - Frontend: 5173
 
 ### 3. API ドキュメント
 
-- ヘルスチェック: `GET http://localhost:3001/health`
-- 統計情報: `GET http://localhost:3001/api/stats`
+- ヘルスチェック: `GET http://localhost:4000/health`
+- 統計情報: `GET http://localhost:4000/api/stats`
 
 ## 開発ガイド
 

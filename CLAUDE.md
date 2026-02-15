@@ -1,64 +1,82 @@
-# Knowledge Graph Platform — Claude Code Guide
+# Human Knowledge Graph Platform (Dialectica) — Claude Code Guide
 
 ## プロジェクト概要
 人類の総合知をグラフ構造で表現するプラットフォーム。
 命題（proposition）を最小単位とし、それらの論理的依存関係を可視化する。
 
-## 最重要設計原則
-1. **プラットフォームは判定を行わない** — 分類・評価・フィルタリングは参加者の役割
-2. **推定無罪** — 全投稿は反駁されるまで信頼される
-3. **全パラメータ公開** — 同じ入力 → 同じ出力（決定論的）
-4. **不完全な参加の前提** — 偏りの集積が多面性を形成
-
 ## 技術スタック
-- Backend: Rust (Axum + SQLx), PostgreSQL 16 + pgvector + PGroonga
-- Frontend: Vite + React + TypeScript + Cytoscape.js + CSS Modules
-- リアルタイム通信: WebSocket (tokio-tungstenite)
-- AI Agents: Python + Ollama / Gemini API
-- Infra: Hetzner VPS + Docker Compose, Cloudflare Pages
+- **Backend**: Rust 1.93+ (Axum + SQLx), PostgreSQL 16 + pgvector + PGroonga
+- **Frontend**: React 19 (Vite + TypeScript + CSS Modules), Cytoscape.js
+- **AI Agents**: Python 3.12+ (Ollama / Gemini API)
+- **Infra**: Docker Compose, Hetzner VPS
 
-## 認証方針
-- 通常API（GET/POST /api/*）: 認証なし（オープンアクセス）
-- バッチAPI（/api/batch/*）: APIキー認証必須
+## クリティカル・ルール (Must Follow)
+
+### 1. コード品質と設計
+- **不変性 (Immutability)**: オブジェクトや配列は決して変更せず、常に新しいコピーを作成する。
+- **小さなファイル**: 1ファイル 200-400行を目安とする。800行を超えたら分割を検討。
+- **高凝集・低結合**: 機能・ドメインごとに整理し、層（Layer）間の依存は一方向に保つ。
+
+### 2. Rust/Backend 規約
+- **エラー処理**: ライブラリ・モジュールエラーには `thiserror` を、アプリケーショントップレベルでは `anyhow` を使用。`unwrap()` / `expect()` は禁止（テストコード除く）。
+- **SQLx活用**: クエリは必ず `sqlx::query!` / `query_as!` マクロを使用し、コンパイル時に検証する。文字列連結によるSQL構築は厳禁。
+- **ロギング**: `println!` は使用せず、必ず `tracing::info!` / `error!` 等を使用する。
+- **レイヤー構造**:
+  - `handlers/`: リクエスト/レスポンス処理（薄く保つ）
+  - `services/`: ビジネスロジック
+  - `repositories/`: DBアクセス（SQLx）
+
+### 3. Frontend 規約
+- **コンポーネント**: `src/components/{Domain}/{Feature}/` に配置。
+- **スタイリング**: 原則 CSS Modules (`*.module.css`) を使用。グローバルスタイルは最小限に。
+- **状態管理**: サーバー状態は `TanStack Query` (未導入なら検討)、クライアント状態は `Zustand`。
+
+### 4. テスト・検証
+- **TDD推奨**: 基本的にテストを先に書くか、実装とセットで書く。
+- **RUSTテスト**: `cargo test` (ユニット), `#[sqlx::test]` (DB統合)。
+- **カバレッジ**: 重要なロジックは80%以上のカバレッジを目指す。
+
+## 環境構築・コマンド
+
+### ポート設定
+- **Backend**: `4000` (Localhost)
+- **Frontend**: `5173`
+- **Database**: `5433` (Host), `5432` (Container)
+
+### よく使うコマンド
+
+```bash
+# バックエンド開発
+cd backend
+cargo run           # 起動
+cargo test          # テスト
+cargo check         # 構文チェック
+sqlx migrate run    # マイグレーション適用（要: DB起動）
+
+# フロントエンド開発
+cd frontend
+npm run dev         # 起動
+npm run build       # ビルド
+npm run lint        # リント
+
+# DB操作
+docker compose up -d      # DB起動
+docker compose down       # DB停止
+docker compose logs -f db # ログ確認
+```
 
 ## ディレクトリ構造
-- `backend/` — Rustバックエンド（Axum + SQLx）
-- `backend/src/api/ws.rs` — WebSocketハンドラ
-- `backend/migrations/` — SQLxマイグレーションファイル
-- `frontend/` — React + TypeScript + Vite
-- `frontend/src/styles/` — グローバルCSS + CSS変数
-- `frontend/src/hooks/` — WebSocket等のカスタムフック
-- `agents/` — Python AIエージェント
-- `db/` — DBコンテナ用Dockerfile（pgvector + PGroonga）
-- `docs/` — 設計書・スキーマ・図
+- `backend/` — Rust API Server
+  - `src/api/` — API Handlers
+  - `src/models/` — Domain Models
+  - `src/db/` — Repository Layer
+- `frontend/` — React App
+  - `src/components/` — UI Components
+  - `src/hooks/` — Custom Hooks
+  - `src/styles/` — CSS Modules & Global Styles
+- `agents/` — Python AI Agents
+- `db/` — Custom Docker build (pgvector/pgroonga)
 
-## スタイリング方針
-- Reactコンポーネント: CSS Modules（*.module.css）
-- Cytoscape.jsグラフ: cy.style() API（JS内でスタイル定義）
-- グローバルスタイル: src/styles/global.css（リセット、変数、フォント）
-
-## 命名規則
-- Rust: snake_case（関数・変数）、PascalCase（型・構造体）
-- TypeScript: camelCase（関数・変数）、PascalCase（型・コンポーネント）
-- CSS Modules: camelCase（クラス名）
-- DB: snake_case（テーブル・カラム）
-- API: /api/{resource} のREST形式、JSONレスポンス
-
-## DB設計の要点
-- 全テーブルのPKはUUID
-- 命題(propositions)、関係(relations)、解釈(interpretations)が中心
-- もっともらしさの計算はDB内のPL/pgSQL関数で実行
-  - compute_plausibility_final, compute_structural_soundness_v2 等
-- PGroongaで日本語全文検索をサポート
-- 詳細は docs/core_schema.sql を参照
-
-## テスト方針
-- `cargo test` でバックエンドテスト
-- `sqlx::test` でDB統合テスト（テスト用DBを自動作成）
-- `npm test` でフロントエンドテスト
-
-## よくある作業
-- 新しいAPIエンドポイント追加: backend/src/api/ にハンドラ追加 → main.rs のRouterに登録
-- WebSocketイベント追加: backend/src/api/ws.rs にハンドラ追加
-- 新しいテーブル追加: backend/migrations/ に新しいSQLファイル → `sqlx migrate run`
-- フロントコンポーネント追加: frontend/src/components/ に配置、スタイルは*.module.cssで作成
+## 認証方針
+- **通常API**: オープンアクセス (`GET /api/*`)
+- **バッチAPI**: APIキー必須 (`POST /api/batch/*`) — ヘッダー `Authorization: Bearer <BATCH_API_KEY>`
