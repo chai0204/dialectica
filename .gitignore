@@ -18,6 +18,9 @@ agents/.venv/
 .vscode/settings.json
 .idea/
 
+# Claude Code (local settings only — project settings are tracked)
+.claude/settings.local.json
+
 # OS
 .DS_Store
 Thumbs.db
