@@ -1,0 +1,80 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node -e \"let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{try{const i=JSON.parse(d);const cmd=i.tool_input?.command||'';if(/\\bunwrap\\(\\)/.test(cmd)||/\\.expect\\(/.test(cmd)){console.error('[Hook] WARN: unwrap()/expect() detected. Use ? operator for error propagation in production code.')}}catch{}console.log(d)})\""
+          }
+        ],
+        "description": "Warn about unwrap()/expect() in Rust commands"
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node -e \"let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{try{const i=JSON.parse(d);const cmd=i.tool_input?.command||'';if(/git push/.test(cmd)){console.error('[Hook] Reminder: Review staged changes before pushing.');console.error('[Hook] Ensure cargo test and npm run lint pass.')}}catch{}console.log(d)})\""
+          }
+        ],
+        "description": "Reminder before git push to verify tests and lint"
+      },
+      {
+        "matcher": "Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node -e \"let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{try{const i=JSON.parse(d);const p=i.tool_input?.file_path||'';if(/\\.(md|txt)$/.test(p)&&!/(README|CLAUDE|CONTRIBUTING|AGENTS)\\.md$/.test(p)&&!/\\/doc\\//.test(p)&&!/\\/\\.claude\\//.test(p)){console.error('[Hook] BLOCKED: Avoid creating ad-hoc documentation files.');console.error('[Hook] File: '+p);console.error('[Hook] Use doc/ directory or update existing docs instead.');process.exit(2)}}catch{}console.log(d)})\""
+          }
+        ],
+        "description": "Block creation of random .md files outside doc/ directory"
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node -e \"let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{try{const i=JSON.parse(d);const p=i.tool_input?.file_path||'';if(/\\.rs$/.test(p)&&/println!/.test(i.tool_input?.new_string||'')){console.error('[Hook] WARN: println! detected in Rust code.');console.error('[Hook] Use tracing::info!/error!/debug! instead (per CLAUDE.md rules).')}}catch{}console.log(d)})\""
+          }
+        ],
+        "description": "Warn about println! in Rust code after edits"
+      },
+      {
+        "matcher": "Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node -e \"let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{try{const i=JSON.parse(d);const p=i.tool_input?.file_path||'';if(/\\.(ts|tsx)$/.test(p)&&/console\\.log/.test(i.tool_input?.new_string||'')){console.error('[Hook] WARN: console.log detected in TypeScript code.');console.error('[Hook] Remove before committing.')}}catch{}console.log(d)})\""
+          }
+        ],
+        "description": "Warn about console.log in TypeScript code after edits"
+      },
+      {
+        "matcher": "Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node -e \"let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{try{const i=JSON.parse(d);const p=i.tool_input?.file_path||'';const s=i.tool_input?.new_string||'';if(/\\.rs$/.test(p)&&/format!\\s*\\(\\s*\".*SELECT|format!\\s*\\(\\s*\".*INSERT|format!\\s*\\(\\s*\".*UPDATE|format!\\s*\\(\\s*\".*DELETE/.test(s)){console.error('[Hook] CRITICAL: SQL string concatenation detected!');console.error('[Hook] Use sqlx::query!/query_as! macros with parameterized queries.');console.error('[Hook] String-built SQL is strictly prohibited.');process.exit(2)}}catch{}console.log(d)})\""
+          }
+        ],
+        "description": "Block SQL string concatenation in Rust code"
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node -e \"const{execSync}=require('child_process');try{const files=execSync('git diff --name-only HEAD 2>/dev/null||true',{encoding:'utf8'}).trim().split('\\n').filter(Boolean);const rsFiles=files.filter(f=>/\\.rs$/.test(f));const tsFiles=files.filter(f=>/\\.(ts|tsx)$/.test(f));let warnings=[];for(const f of rsFiles){try{const c=require('fs').readFileSync(f,'utf8');if(/println!/.test(c))warnings.push('[println!] '+f);if(/\\.unwrap\\(\\)/.test(c)&&!/#\\[cfg\\(test\\)\\]/.test(c)&&!/mod tests/.test(c))warnings.push('[unwrap()] '+f)}catch{}}for(const f of tsFiles){try{const c=require('fs').readFileSync(f,'utf8');if(/console\\.log/.test(c))warnings.push('[console.log] '+f)}catch{}}if(warnings.length){console.error('[Hook] Code quality warnings in modified files:');warnings.forEach(w=>console.error('  '+w))}}catch{}\""
+          }
+        ],
+        "description": "Audit modified files for println!, unwrap(), and console.log"
+      }
+    ]
+  }
+}
